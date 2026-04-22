@@ -1,0 +1,22 @@
+# Linux systemd service — /etc/systemd/system/globe-cli.service
+# Install: sudo cp globe-cli.service /etc/systemd/system/
+#          sudo systemctl enable --now globe-cli
+
+[Unit]
+Description=GLOBE-CLI AI Server
+After=network.target ollama.service
+Wants=ollama.service
+
+[Service]
+Type=simple
+User=globe
+WorkingDirectory=/opt/globe-cli
+ExecStart=/opt/globe-cli/.venv/bin/python /opt/globe-cli/server.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

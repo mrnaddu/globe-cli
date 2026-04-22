@@ -1,0 +1,232 @@
+# 🌐 GLOBE-CLI
+
+**Self-Deploying, Persistent & Monitored Global AI Coding Ecosystem**
+
+Run ONE command to host a 3-agent AI coding backend locally, serve it globally via Cloudflare, and monitor worldwide usage in real-time — all at zero cloud cost.
+
+```
+          ╔══════════════════════════════════════════╗
+          ║     ·  .  ·  🌐  GLOBE-CLI  🌐  ·  .  · ║
+          ║  ▄▄▄▄      ▄   ▄▄▄▄▄      ▄▄             ║
+          ║ █    █▄ ▄▄█ █▄█     █▄▄▄██  █▄▄           ║
+          ║ █▄    ██  ▄  ██  ▄▄  █   █▄  ▄██▄         ║
+          ║  █▄▄  ▀█▄▄█  █  ██  █    ▀██▀  █▄▄▄       ║
+          ║   ▀▀█   ▀▀    ▀▀  ▀▀      ▀     ▀▀▀       ║
+          ║  Serving AI Globally • Zero Cloud Cost     ║
+          ╚══════════════════════════════════════════╝
+```
+
+## What It Does
+
+GLOBE-CLI runs a **3-agent AI pipeline** on your local machine using Ollama models, then exposes it globally through a Cloudflare tunnel:
+
+| Agent | Model | Role |
+|-------|-------|------|
+| 📐 **Architect** | `llama3.2:3b` | Analyzes your request and creates an implementation plan |
+| 💻 **Coder** | `qwen2.5-coder:7b` | Writes complete, production-quality code from the plan |
+| 🔍 **Reviewer** | `llama3.2:3b` | Audits the code for bugs, security issues, and quality |
+
+Responses stream word-by-word via SSE (Server-Sent Events) for instant feedback.
+
+### Key Features
+
+- **FastAPI Backend** — Fully async with SSE streaming
+- **API Key Auth** — Static `X-API-KEY` header validation
+- **Cloudflare Tunnel** — Auto-configured global access, no port forwarding needed
+- **Real-Time Dashboard** — Terminal (Rich) and browser-based monitoring
+- **Metrics Tracking** — Requests, tokens, active connections, CPU/GPU, cost saved
+- **Auto-Restart** — systemd (Linux), launchd (macOS), Task Scheduler (Windows)
+- **Tunnel Watchdog** — Background thread auto-restarts the tunnel if it drops
+
+---
+
+## Prerequisites
+
+- **Python 3.10+**
+- **[Ollama](https://ollama.com)** — installed and running
+- **[cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)** — optional, for global access
+
+---
+
+## Quick Start
+
+### 1. Clone & Setup (One Command)
+
+```bash
+git clone https://github.com/mrnaddu/globe-cli.git
+cd globe-cli
+python setup.py
+```
+
+This single command will:
+- Create a Python virtual environment (`.venv`)
+- Install all dependencies
+- Verify Ollama and pull `llama3.2:3b` + `qwen2.5-coder:7b`
+- Launch a Cloudflare tunnel and capture the public URL
+- Generate a `.env` file with a secure API key
+
+### 2. Start the Server
+
+```bash
+# Windows
+.venv\Scripts\python server.py
+
+# Linux / macOS
+.venv/bin/python server.py
+```
+
+The server starts on `http://localhost:8787` by default.
+
+### 3. Send a Request via CLI
+
+```bash
+# Windows
+.venv\Scripts\python cli.py ask "Build a REST API for a todo app with FastAPI"
+
+# Linux / macOS
+.venv/bin/python cli.py ask "Build a REST API for a todo app with FastAPI"
+```
+
+You'll see each agent (Architect → Coder → Reviewer) process your request with live streaming output and syntax-highlighted code blocks.
+
+---
+
+## Usage
+
+### CLI Commands
+
+```bash
+# Ask the 3-agent pipeline to generate code
+python cli.py ask "Your coding request here"
+
+# Add context to your request
+python cli.py ask "Add authentication" --context "We use FastAPI with JWT tokens"
+
+# Check if the server is online
+python cli.py health
+
+# View server metrics
+python cli.py stats
+
+# Override server URL or API key
+python cli.py ask "Hello" --server https://your-tunnel.trycloudflare.com --key your-api-key
+```
+
+### Admin Dashboard (Terminal)
+
+```bash
+python admin_dashboard.py
+```
+
+Launches a full-screen Rich Live terminal dashboard showing:
+- Total requests, tokens, and active connections
+- CPU / Memory / GPU utilization
+- Recent global requests (IP + timestamp)
+- Cost saved vs. OpenAI/Anthropic pricing
+
+### Browser Dashboard
+
+Open in your browser:
+```
+http://localhost:8787/dashboard?key=YOUR_API_KEY
+```
+
+Auto-refreshes every 3 seconds with the same metrics.
+
+### Performance Tests
+
+```bash
+python test_performance.py
+```
+
+Runs:
+- Health check, auth rejection, and metrics endpoint tests
+- Full streaming pipeline test (all 3 agents)
+- Concurrent load test (3 parallel × 5 requests)
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/health` | No | Server health check |
+| `POST` | `/generate` | `X-API-KEY` | 3-agent pipeline (SSE stream) |
+| `GET` | `/metrics` | `X-API-KEY` | Server metrics JSON |
+| `GET` | `/dashboard` | Query param | Browser monitoring dashboard |
+
+### Example API Call
+
+```bash
+curl -N -X POST http://localhost:8787/generate \
+  -H "Content-Type: application/json" \
+  -H "X-API-KEY: your-api-key" \
+  -d '{"prompt": "Write a binary search in Python"}'
+```
+
+---
+
+## Configuration
+
+All settings are in `.env` (auto-generated by `setup.py`):
+
+```env
+GLOBE_API_KEY=your-secure-key
+GLOBE_HOST=0.0.0.0
+GLOBE_PORT=8787
+GLOBE_TUNNEL_URL=https://xxx.trycloudflare.com
+OLLAMA_HOST=http://localhost:11434
+MODEL_ARCHITECT=llama3.2:3b
+MODEL_CODER=qwen2.5-coder:7b
+MODEL_REVIEWER=llama3.2:3b
+```
+
+---
+
+## Auto-Restart (24/7 Persistence)
+
+### Windows
+
+```powershell
+# Run as Administrator
+powershell -ExecutionPolicy Bypass -File persistence\install_windows_task.ps1
+```
+
+### Linux (systemd)
+
+```bash
+sudo cp persistence/globe-cli.service /etc/systemd/system/
+sudo systemctl enable --now globe-cli
+```
+
+### macOS (launchd)
+
+```bash
+cp persistence/com.globe-cli.server.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.globe-cli.server.plist
+```
+
+---
+
+## Project Structure
+
+```
+globe-cli/
+├── setup.py                 # One-command automated installer
+├── server.py                # FastAPI backend + 3-agent pipeline
+├── cli.py                   # Rich CLI client with SSE streaming
+├── admin_dashboard.py       # Real-time terminal monitoring dashboard
+├── test_performance.py      # Performance & load test suite
+├── requirements.txt         # Python dependencies
+├── .env.example             # Configuration template
+└── persistence/
+    ├── globe-cli.service           # Linux systemd unit
+    ├── com.globe-cli.server.plist  # macOS launchd plist
+    └── install_windows_task.ps1    # Windows Task Scheduler script
+```
+
+---
+
+## License
+
+MIT
